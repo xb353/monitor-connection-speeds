@@ -11,10 +11,10 @@ import OpenSSL.crypto as crypto
 @dataclass
 class ConnectionTesting:
     # How often to check connection in seconds
-    CHECK_INTERVAL: int = 60
+    CHECK_DELAY: int = 5
 
-    # How often to check speed in seconds
-    SPEED_INTERVAL: int = (60 * 10)
+    # How often to check speed
+    SPEED_INTERVAL: int = CHECK_DELAY * 10
 
     # Domain and port for initial connection check
     CHECK_DOMAIN:   str = '1.1.1.1'
@@ -144,23 +144,31 @@ def main():
     # init connection testing obj as test which will initialize our DB if it doesn't exist
     print("+ Initializing")
     test = ConnectionTesting()
+    # We'll start it high to force a check at beginning
+    interval_num = test.SPEED_INTERVAL
     while True:
         try:
             test.summary()
-            # Keep checking connection every X seconds until we have a good test result, then move on to speed test intervals
-            while not test.ssl_check_connection():
-                time.sleep(test.CHECK_INTERVAL)
             
-            # We should theoretically only get to this point with a successful connection test.
-            # if it breaks on getting new speeds, drop back to connection checking immediately
-            T = test.get_new_speeds()
-            if not T:
-                continue
-            else:
-                # Otherwise, hang out for a little bit
-                time.sleep(test.SPEED_INTERVAL)
+            # Keep checking connection every CHECK_DELAY seconds
+            # test speed intervals every SPEED_INTERVAL interval
 
-        # Catch ctr+c for exit with graceful db exit
+            # If we don't have a connection, don't bother thinking about checking the speed
+            while not test.ssl_check_connection():
+                time.sleep(test.CHECK_DELAY)
+            
+            interval_num+=test.CHECK_DELAY
+            if interval_num>=test.SPEED_INTERVAL:
+                # If it worked, reset interval number
+                if test.get_new_speeds():
+                    interval_num=0
+                # Otherwise, start the loop over to check our connection
+                # Keep interval high so we're forced to re-check our speed
+                else:
+                    continue
+            
+            time.sleep(test.CHECK_DELAY)
+            
         except KeyboardInterrupt:
             test._exit()
         # Otherwise let me know theres an issue and print it out and exit
