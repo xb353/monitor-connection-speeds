@@ -14,7 +14,7 @@ class ConnectionTesting:
     CHECK_DELAY: int = 5
 
     # How often to check speed
-    SPEED_INTERVAL: int = CHECK_DELAY * 10
+    SPEED_INTERVAL: int = CHECK_DELAY * 10 * 10
 
     # Domain and port for initial connection check
     CHECK_DOMAIN:   str = '1.1.1.1'
